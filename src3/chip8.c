@@ -18,7 +18,7 @@
 
 #include "cpu.h"
 #include "libsdl.h"
-//#include <config.h>
+#include <SDL2/SDL_config.h>
 
 #include <getopt.h>
 #include <stdio.h>
