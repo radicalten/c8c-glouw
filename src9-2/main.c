@@ -2,7 +2,7 @@
 //#include <SDL2/SDL_error.h>
 //#include <SDL2/SDL_events.h>
 //#include <SDL2/SDL_keysym.h>
-#include <SDL2/SDL_mixer.h>
+//#include <SDL2/SDL_mixer.h>
 #include <stdio.h>
 #include <stdlib.h>
 
