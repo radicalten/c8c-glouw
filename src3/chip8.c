@@ -18,7 +18,8 @@
 
 #include "cpu.h"
 #include "libsdl.h"
-#include <SDL2/SDL_config.h>
+#define PACKAGE_STRING "YourPackageName 1.0"
+//#include <config.h>
 
 #include <getopt.h>
 #include <stdio.h>
