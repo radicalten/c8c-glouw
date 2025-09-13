@@ -4,36 +4,36 @@
  *
  * The simplest SDL wrapper framework I could get away with.
  */
-#if defined(ANDROID) || defined(_MSC_VER)
-#  include <SDL.h>
-#  ifndef SDL2
-#    define SDL2
-#  endif
-#else
-#  ifdef SDL2
-#    include <SDL.h>
-#  else
-#    include <SDL2/SDL.h>
-#  endif
-#endif
+//#if defined(ANDROID) || defined(_MSC_VER)
+//#  include <SDL.h>
+//#  ifndef SDL2
+//#    define SDL2
+//#  endif
+//#else
+//#  ifdef SDL2
+//#    include <SDL.h>
+//#  else
+include <SDL2/SDL.h>
+//#  endif
+//#endif
 
-#ifdef SDL2
-#  define FILEOBJ   SDL_RWops
-#  define FOPEN     SDL_RWFromFile
-#  define FCLOSE    SDL_RWclose
-#  define FSEEK(ctx, offs, orig)        SDL_RWseek(ctx, offs, RW_ ## orig)
-#  define FTELL     SDL_RWtell
-#  define FREAD(ptr, size, num, ctx)    SDL_RWread(ctx, ptr, size, num)
-#  define REWIND(ctx)                   SDL_RWseek(ctx, 0, RW_SEEK_SET)
-#else
-#  define FILEOBJ   FILE
-#  define FOPEN     fopen
-#  define FCLOSE    fclose
-#  define FSEEK     fseek
-#  define FTELL     ftell
-#  define FREAD     fread
-#  define REWIND    rewind
-#endif
+//#ifdef SDL2
+#define FILEOBJ   SDL_RWops
+#define FOPEN     SDL_RWFromFile
+#define FCLOSE    SDL_RWclose
+#define FSEEK(ctx, offs, orig)        SDL_RWseek(ctx, offs, RW_ ## orig)
+#define FTELL     SDL_RWtell
+#define FREAD(ptr, size, num, ctx)    SDL_RWread(ctx, ptr, size, num)
+#define REWIND(ctx)                   SDL_RWseek(ctx, 0, RW_SEEK_SET)
+//#else
+//#  define FILEOBJ   FILE
+//#  define FOPEN     fopen
+//#  define FCLOSE    fclose
+//#  define FSEEK     fseek
+//#  define FTELL     ftell
+//#  define FREAD     fread
+//#  define REWIND    rewind
+//#endif
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
