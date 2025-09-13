@@ -1,4 +1,4 @@
-#include "src/ch8.h"
+#include "ch8.h"
 
 int main() {
 
