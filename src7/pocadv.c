@@ -51,7 +51,7 @@ Bitmap *vscreen;
 #endif
 
 #ifndef SDL2
-char keys[SDLK_LAST];
+char keys[SDLK_LALT];
 #else
 char keys[SDL_NUM_SCANCODES];
 #endif
