@@ -102,11 +102,11 @@ int show_debug() {
 }
 
 /* Handle special keys */
-#ifdef SDL2
+//#ifdef SDL2
 static int handleKeys(SDL_Scancode key) {
-#else
-static int handleKeys(SDLKey key) {
-#endif
+//#else
+//static int handleKeys(SDLKey key) {
+//#endif
     switch(key) {
 #if !defined(__EMSCRIPTEN__) && ESCAPE_QUITS
     case KCODE(ESCAPE) : quit = 1; return 1;
@@ -194,7 +194,7 @@ static void handle_events() {
         switch(event.type) {
             case SDL_KEYDOWN: {
                 lastEvent = "Key Down"; finger_id=-1;
-#ifdef SDL2
+//#ifdef SDL2
                 if(handleKeys(event.key.keysym.scancode))
                     break;
                 keys[event.key.keysym.scancode] = 1;
@@ -217,37 +217,37 @@ static void handle_events() {
                         pressed_key = 0x40000000 | SDL_SCANCODE_DELETE;
                     }
                 }
-#else
-                if(handleKeys(event.key.keysym.sym))
-                    break;
-                keys[event.key.keysym.sym] = 1;
-                pressed_key = event.key.keysym.sym;
-                if(pressed_key > 0xFF) {
-                    pressed_key |= 0x40000000;
-                } else if(event.key.keysym.mod & (KMOD_LSHIFT | KMOD_RSHIFT)) {
-                    if(isalpha(pressed_key)) {
-                        pressed_key = toupper(pressed_key);
-                    } else {
-                        /* This would not work with different keyboard layouts */
-                        static const char *in  = "`1234567890-=[],./;'\\";
-                        static const char *out = "~!@#$%^&*()_+{}<>?:\"|";
-                        char *p = strchr(in, pressed_key);
-                        if(p) {
-                            pressed_key = out[p-in];
-                        }
-                    }
-                } else if (pressed_key == SDLK_DELETE) {
-                    pressed_key = 0x40000000 | SDLK_DELETE;
-                }
-#endif
+//#else
+        //        if(handleKeys(event.key.keysym.sym))
+        //            break;
+        //        keys[event.key.keysym.sym] = 1;
+         //       pressed_key = event.key.keysym.sym;
+         //       if(pressed_key > 0xFF) {
+           //         pressed_key |= 0x40000000;
+             //   } else if(event.key.keysym.mod & (KMOD_LSHIFT | KMOD_RSHIFT)) {
+               //     if(isalpha(pressed_key)) {
+                 //       pressed_key = toupper(pressed_key);
+                   // } else {
+                     //   /* This would not work with different keyboard layouts */
+                       // static const char *in  = "`1234567890-=[],./;'\\";
+                        s//tatic const char *out = "~!@#$%^&*()_+{}<>?:\"|";
+                        //char *p = strchr(in, pressed_key);
+                        //if(p) {
+                          //  pressed_key = out[p-in];
+                       // }
+                   // }
+               // } else if (pressed_key == SDLK_DELETE) {
+                 //   pressed_key = 0x40000000 | SDLK_DELETE;
+               // }
+//#endif
             } break;
             case SDL_KEYUP: {
                 lastEvent = "Key Up";finger_id=-1;
-#ifdef SDL2
+//#ifdef SDL2
                 keys[event.key.keysym.scancode] = 0;
-#else
-                keys[event.key.keysym.sym] = 0;
-#endif
+//#else
+//                keys[event.key.keysym.sym] = 0;
+//#endif
             } break;
 #ifndef ANDROID /* Ignore the mouse on android, that's what the touch events are for */
             case SDL_MOUSEBUTTONDOWN: {
@@ -405,23 +405,23 @@ void exit_error(const char *fmt, ...) {
 static void do_iteration() {
     int cx = 0, cy = 0;
 
-#ifndef SDL2
-    if(SDL_MUSTLOCK(window))
-        SDL_LockSurface(window);
-    bm_rebind(vscreen, window->pixels);
-    handle_events();
+//#ifndef SDL2
+//    if(SDL_MUSTLOCK(window))
+//        SDL_LockSurface(window);
+//    bm_rebind(vscreen, window->pixels);
+//    handle_events();
 
-    draw_frame();
+  //  draw_frame();
 
-    if(cursor) {
-        cx = mouse_x - cursor_hsx;
-        cy = mouse_y - cursor_hsy;
+    //if(cursor) {
+      //  cx = mouse_x - cursor_hsx;
+        //cy = mouse_y - cursor_hsy;
 
-        int cw = bm_width(cursor), ch = bm_height(cursor);
+      //  int cw = bm_width(cursor), ch = bm_height(cursor);
 
-        bm_blit(cursor_back, 0, 0, screen, cx, cy, cw, ch);
-        bm_maskedblit(screen, cx, cy, cursor, 0, 0, cw, ch);
-    }
+      //  bm_blit(cursor_back, 0, 0, screen, cx, cy, cw, ch);
+    //    bm_maskedblit(screen, cx, cy, cursor, 0, 0, cw, ch);
+ //   }
 
 #  if EPX_SCALE
     bm_blit_ex(vscreen, 0, 0, bm_width(vscreen), bm_height(vscreen), epx, 0, 0, bm_width(epx), bm_height(epx), 0);
@@ -486,7 +486,7 @@ int main(int argc, char *argv[]) {
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
-#ifdef SDL2
+//#ifdef SDL2
     window = SDL_CreateWindow(WINDOW_CAPTION " - SDL2",
                           SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                           WINDOW_WIDTH, WINDOW_HEIGHT,
@@ -559,7 +559,7 @@ int main(int argc, char *argv[]) {
 
 #endif
     rlog("%s: Main loop stopped", WINDOW_CAPTION);
-#ifdef SDL2
+//#ifdef SDL2
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
