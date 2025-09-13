@@ -467,18 +467,6 @@ int main(int argc, char *argv[]) {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     bm_free(screen);
-#  if EPX_SCALE
-    bm_free(epx);
-#  endif
-
-#else
-    bm_unbind(vscreen);
-    bm_free(screen);
-#  if EPX_SCALE
-    bm_free(epx);
-#  endif
-
-#endif
 
     SDL_Quit();
 
