@@ -37,24 +37,24 @@
 #  define LOG_FILE_NAME "sdl-game.log"
 #endif
 
-#ifndef SDL2
+//#ifndef SDL2
 static SDL_Surface *window;
-#else
-static SDL_Renderer *renderer = NULL;
-static SDL_Texture *texture = NULL;
-static SDL_Window *window;
-#endif
+//#else
+//static SDL_Renderer *renderer = NULL;
+//static SDL_Texture *texture = NULL;
+//static SDL_Window *window;
+//#endif
 
 Bitmap *screen;
-#ifndef SDL2
-Bitmap *vscreen;
-#endif
+//#ifndef SDL2
+//Bitmap *vscreen;
+//#endif
 
-#ifndef SDL2
-char keys[SDLK_LALT];
+//#ifndef SDL2
+//char keys[SDLK_LALT];
 #else
 char keys[SDL_NUM_SCANCODES];
-#endif
+//#endif
 static int pressed_key = 0;
 
 int mouse_x, mouse_y;
