@@ -49,7 +49,7 @@
 extern Bitmap *screen;
 
 #ifndef SDL2
-extern char keys[SDLK_LAST];
+extern char keys[SDLK_LALT];
 #define KCODE(k) SDLK_ ## k
 #define KCODEA(k,K) SDLK_ ## k
 #else
