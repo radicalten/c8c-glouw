@@ -436,7 +436,7 @@ int main(int argc, char *argv[]) {
 
 
     screen = bm_create(SCREEN_WIDTH, SCREEN_HEIGHT);
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
+    texture = SDL_CreateTexture(render, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
     if(!texture) {
         rerror("%s","SDL_CreateTexture()");
         return 1;
