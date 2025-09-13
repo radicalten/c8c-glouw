@@ -423,16 +423,16 @@ static void do_iteration() {
     //    bm_maskedblit(screen, cx, cy, cursor, 0, 0, cw, ch);
  //   }
 
-#  if EPX_SCALE
-    bm_blit_ex(vscreen, 0, 0, bm_width(vscreen), bm_height(vscreen), epx, 0, 0, bm_width(epx), bm_height(epx), 0);
-#  else
-    bm_blit_ex(vscreen, 0, 0, bm_width(vscreen), bm_height(vscreen), screen, 0, 0, bm_width(screen), bm_height(screen), 0);
-#  endif
+//#  if EPX_SCALE
+//    bm_blit_ex(vscreen, 0, 0, bm_width(vscreen), bm_height(vscreen), epx, 0, 0, bm_width(epx), bm_height(epx), 0);
+//#  else
+//    bm_blit_ex(vscreen, 0, 0, bm_width(vscreen), bm_height(vscreen), screen, 0, 0, bm_width(screen), bm_height(screen), 0);
+//#  endif
 
-    if(SDL_MUSTLOCK(window))
-        SDL_UnlockSurface(window);
-    SDL_Flip(window);
-#else
+ //   if(SDL_MUSTLOCK(window))
+//        SDL_UnlockSurface(window);
+//    SDL_Flip(window);
+//#else
     handle_events();
 
     draw_frame();
@@ -445,15 +445,15 @@ static void do_iteration() {
         bm_maskedblit(screen, cx, cy, cursor, 0, 0, cw, ch);
     }
 
-#  if EPX_SCALE
-    SDL_UpdateTexture(texture, NULL, bm_data(epx), bm_width(epx)*4);
-#  else
+//#  if EPX_SCALE
+//    SDL_UpdateTexture(texture, NULL, bm_data(epx), bm_width(epx)*4);
+//#  else
     SDL_UpdateTexture(texture, NULL, bm_raw_data(screen), bm_width(screen)*4);
-#  endif
+//#  endif
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, texture, NULL, NULL);
     SDL_RenderPresent(renderer);
-#endif
+//#endif
 
     if(cursor) {
         bm_maskedblit(screen, cx, cy, cursor_back, 0, 0, bm_width(cursor_back), bm_height(cursor_back));
