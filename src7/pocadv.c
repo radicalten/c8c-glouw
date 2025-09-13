@@ -412,24 +412,6 @@ static void do_iteration() {
 
 int main(int argc, char *argv[]) {
 
-#ifdef __EMSCRIPTEN__
-    logfile = stdout;
-#else
-    //logfile = fopen("pocadv.log", "w");
-
-#  ifdef _MSC_VER
-    errno_t err = fopen_s(&logfile, LOG_FILE_NAME, "w");
-    if (err != 0)
-        return 1;
-#  elif USE_LOG_STREAM
-	logfile = LOG_STREAM;
-#  else
-    logfile = fopen(LOG_FILE_NAME, "w");
-    if (!logfile)
-        return 1;
-#  endif
-#endif
-
     rlog("%s: Application Running", WINDOW_CAPTION);
 
     srand((unsigned int)time(NULL));
@@ -452,45 +434,16 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-#  if EPX_SCALE
-    epx = bm_create(VSCREEN_WIDTH, VSCREEN_HEIGHT);
-    screen = bm_create(SCREEN_WIDTH, SCREEN_HEIGHT);
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, VSCREEN_WIDTH, VSCREEN_HEIGHT);
-    if(!texture) {
-        rerror("%s","SDL_CreateTexture()");
-        return 1;
-    }
-#  else
+
     screen = bm_create(SCREEN_WIDTH, SCREEN_HEIGHT);
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
     if(!texture) {
         rerror("%s","SDL_CreateTexture()");
         return 1;
     }
-#  endif
 
     init_game(argc, argv);
-#else
-    /* Using SDL 1.2 */
-    SDL_WM_SetCaption(WINDOW_CAPTION " - SDL1.2", "game");
-    window = SDL_SetVideoMode(WINDOW_WIDTH, WINDOW_HEIGHT, 32, SDL_SWSURFACE);
 
-    screen = bm_create(SCREEN_WIDTH, SCREEN_HEIGHT);
-#  if EPX_SCALE
-    epx = bm_create(VSCREEN_WIDTH, VSCREEN_HEIGHT);
-#  endif
-    if(SDL_MUSTLOCK(window)) {
-        SDL_LockSurface(window);
-        vscreen = bm_bind(WINDOW_WIDTH, WINDOW_HEIGHT, window->pixels);
-        init_game(argc, argv);
-        SDL_UnlockSurface(window);
-    } else {
-        vscreen = bm_bind(WINDOW_WIDTH, WINDOW_HEIGHT, window->pixels);
-        init_game(argc, argv);
-    }
-
-    SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
-#endif
 
 #ifdef TEST_SDL_LOCK_OPTS
     EM_ASM("SDL.defaults.copyOnLock = false; SDL.defaults.discardOnLock = true; SDL.defaults.opaqueFrontBuffer = false");
