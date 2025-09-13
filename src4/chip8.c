@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <time.h>
 
-#include "SDL.h"
+#include <SDL2/SDL.h>
 
 // SDL Container object
 typedef struct {
