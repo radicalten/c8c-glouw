@@ -428,20 +428,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    renderer = SDL_CreateRenderer(window, -1, 0);
-    if(!renderer) {
-        rerror("%s","SDL_CreateRenderer()");
-        return 1;
-    }
-
-
     screen = bm_create(SCREEN_WIDTH, SCREEN_HEIGHT);
-    texture = SDL_CreateTexture(render, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
-    if(!texture) {
-        rerror("%s","SDL_CreateTexture()");
-        return 1;
-    }
-
     init_game(argc, argv);
 
 
@@ -464,7 +451,7 @@ int main(int argc, char *argv[]) {
     rlog("%s: Main loop stopped", WINDOW_CAPTION);
 //#ifdef SDL2
     SDL_DestroyTexture(texture);
-    SDL_DestroyRenderer(renderer);
+    SDL_DestroyRenderer(render);
     SDL_DestroyWindow(window);
     bm_free(screen);
 
