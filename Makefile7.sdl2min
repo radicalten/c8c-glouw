@@ -1,8 +1,8 @@
 CC      := gcc
 CFLAGS  := -O3 -flto
-LDFLAGS := -O3 -flto -I/opt/homebrew/include/SDL2 -L/opt/homebrew/lib -Wl,-rpath,/opt/homebrew/lib -lSDL2
+LDFLAGS := -O3 -flto -s -I/opt/homebrew/include/SDL2 -L/opt/homebrew/lib -Wl,-rpath,/opt/homebrew/lib -lSDL2
 TARGET  := myapp
-SRCS    := $(wildcard src6/*.c)
+SRCS    := $(wildcard src7/*.c)
 OBJS    := $(patsubst %.c,%.o,$(SRCS))
 # Make requires <tab> to separate 
 all: $(OBJS)
