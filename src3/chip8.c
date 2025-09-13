@@ -18,7 +18,7 @@
 
 #include "cpu.h"
 #include "libsdl.h"
-#include <config.h>
+//#include <config.h>
 
 #include <getopt.h>
 #include <stdio.h>
