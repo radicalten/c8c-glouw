@@ -48,15 +48,15 @@ include <SDL2/SDL.h>
 
 extern Bitmap *screen;
 
-#ifndef SDL2
-extern char keys[SDLK_LALT];
-#define KCODE(k) SDLK_ ## k
-#define KCODEA(k,K) SDLK_ ## k
-#else
+//#ifndef SDL2
+//extern char keys[SDLK_LALT];
+//#define KCODE(k) SDLK_ ## k
+//#define KCODEA(k,K) SDLK_ ## k
+//#else
 extern char keys[SDL_NUM_SCANCODES];
 #define KCODE(k) SDL_SCANCODE_ ## k
 #define KCODEA(k,K) SDL_SCANCODE_ ## K
-#endif
+//#endif
 
 extern int quit;
 
