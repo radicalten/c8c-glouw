@@ -230,7 +230,7 @@ static void handle_events() {
                    // } else {
                      //   /* This would not work with different keyboard layouts */
                        // static const char *in  = "`1234567890-=[],./;'\\";
-                        s//tatic const char *out = "~!@#$%^&*()_+{}<>?:\"|";
+                        //static const char *out = "~!@#$%^&*()_+{}<>?:\"|";
                         //char *p = strchr(in, pressed_key);
                         //if(p) {
                           //  pressed_key = out[p-in];
@@ -404,56 +404,6 @@ void exit_error(const char *fmt, ...) {
 
 static void do_iteration() {
     int cx = 0, cy = 0;
-
-//#ifndef SDL2
-//    if(SDL_MUSTLOCK(window))
-//        SDL_LockSurface(window);
-//    bm_rebind(vscreen, window->pixels);
-//    handle_events();
-
-  //  draw_frame();
-
-    //if(cursor) {
-      //  cx = mouse_x - cursor_hsx;
-        //cy = mouse_y - cursor_hsy;
-
-      //  int cw = bm_width(cursor), ch = bm_height(cursor);
-
-      //  bm_blit(cursor_back, 0, 0, screen, cx, cy, cw, ch);
-    //    bm_maskedblit(screen, cx, cy, cursor, 0, 0, cw, ch);
- //   }
-
-//#  if EPX_SCALE
-//    bm_blit_ex(vscreen, 0, 0, bm_width(vscreen), bm_height(vscreen), epx, 0, 0, bm_width(epx), bm_height(epx), 0);
-//#  else
-//    bm_blit_ex(vscreen, 0, 0, bm_width(vscreen), bm_height(vscreen), screen, 0, 0, bm_width(screen), bm_height(screen), 0);
-//#  endif
-
- //   if(SDL_MUSTLOCK(window))
-//        SDL_UnlockSurface(window);
-//    SDL_Flip(window);
-//#else
-    handle_events();
-
-    draw_frame();
-
-    if(cursor) {
-        cx = mouse_x - cursor_hsx;
-        cy = mouse_y - cursor_hsy;
-        int cw = bm_width(cursor), ch = bm_height(cursor);
-        bm_blit(cursor_back, 0, 0, screen, cx, cy, cw, ch);
-        bm_maskedblit(screen, cx, cy, cursor, 0, 0, cw, ch);
-    }
-
-//#  if EPX_SCALE
-//    SDL_UpdateTexture(texture, NULL, bm_data(epx), bm_width(epx)*4);
-//#  else
-    SDL_UpdateTexture(texture, NULL, bm_raw_data(screen), bm_width(screen)*4);
-//#  endif
-    SDL_RenderClear(renderer);
-    SDL_RenderCopy(renderer, texture, NULL, NULL);
-    SDL_RenderPresent(renderer);
-//#endif
 
     if(cursor) {
         bm_maskedblit(screen, cx, cy, cursor_back, 0, 0, bm_width(cursor_back), bm_height(cursor_back));
