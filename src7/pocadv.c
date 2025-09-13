@@ -52,7 +52,7 @@ Bitmap *screen;
 
 //#ifndef SDL2
 //char keys[SDLK_LALT];
-#else
+//#else
 char keys[SDL_NUM_SCANCODES];
 //#endif
 static int pressed_key = 0;
