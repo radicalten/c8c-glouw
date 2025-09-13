@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <windows.h>
+//#include <windows.h>
 #include <SDL2/SDL.h>
 #include "main.h"
 #include "cpu.h"
@@ -199,3 +199,4 @@ int main(int argc, char* argv[]) {
     SDL_Quit();
     return 0;
 }
+
