@@ -1,8 +1,8 @@
-#include <SDL/SDL.h>
-#include <SDL/SDL_error.h>
-#include <SDL/SDL_events.h>
-#include <SDL/SDL_keysym.h>
-#include <SDL/SDL_mixer.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_error.h>
+#include <SDL2/SDL_events.h>
+#include <SDL2/SDL_keysym.h>
+#include <SDL2/SDL_mixer.h>
 #include <stdio.h>
 #include <stdlib.h>
 
