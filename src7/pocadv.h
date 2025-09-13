@@ -39,9 +39,9 @@
 #include <emscripten.h>
 #endif
 
-#include "../app.h"
+#include "app.h"
 
-#include "../bmp.h"
+#include "bmp.h"
 
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX(a,b) ((a)>(b)?(a):(b))
