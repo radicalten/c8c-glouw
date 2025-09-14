@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include "ch8.h" // Your Chip-8 core header
 
 // --- Configuration ---
