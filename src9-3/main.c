@@ -34,7 +34,7 @@ bool window_create() {
     return true;
 }
 
-void window_process_input(cpu_t *cpu) {
+void window_process_input(struct CH8_Core *cpu) {
     SDL_Event e;
     if (SDL_PollEvent(&e)) {
         switch (e.type) {
@@ -153,7 +153,7 @@ void window_process_input(cpu_t *cpu) {
     }
 }
 
-void window_render(cpu_t *cpu) {
+void window_render(struct CH8_Core *cpu) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
     SDL_RenderClear(renderer);
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 0);
@@ -176,7 +176,7 @@ int main(int argc, char* argv[]) {
     }
     srand(time(NULL));
     
-    cpu_t cpu = cpu_create();
+    struct CH8_Core cpu = cpu_create();
     // load rom into memory
     cpu_load_rom(&cpu, argv[1]);
     
@@ -199,5 +199,6 @@ int main(int argc, char* argv[]) {
     SDL_Quit();
     return 0;
 }
+
 
 
