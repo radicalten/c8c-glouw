@@ -174,7 +174,7 @@ bool set_config_from_args(config_t *config, const int argc, char **argv) {
         .fg_color = 0xFFFFFFFF, // WHITE
         .bg_color = 0x000000FF, // BLACK
         .scale_factor = 20,     // Default resolution will be 1280x640
-        .pixel_outlines = true, // Draw pixel "outlines" by default
+        .pixel_outlines = false, // Draw pixel "outlines" by default
         .insts_per_second = 600, // Number of instructions to emulate in 1 second (clock rate of CPU)
         .square_wave_freq = 440,    // 440hz for middle A
         .audio_sample_rate = 44100, // CD quality, 44100hz
