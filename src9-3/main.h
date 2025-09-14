@@ -4,7 +4,7 @@
 #include "ch8.h"
 
 bool window_create();
-void window_process_input(Ch8_display *cpu);
-void window_render(Ch8_display *cpu);
+void window_process_input(CH8_Core *cpu);
+void window_render(CH8_Core *cpu);
 
 #endif // MAIN_H
