@@ -5,6 +5,6 @@
 
 bool window_create();
 void window_process_input(Ch8_display *cpu);
-void window_render(cpu_t *cpu);
+void window_render(Ch8_display *cpu);
 
 #endif // MAIN_H
