@@ -1,1 +1,1 @@
-
+This is the queso-fuego chip8 emulator with the config struct set to pixel lines off. 
