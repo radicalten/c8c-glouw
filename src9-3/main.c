@@ -2,7 +2,7 @@
 //#include <windows.h>
 #include <SDL2/SDL.h>
 #include "main.h"
-#include "cpu.h"
+#include "ch8.h"
 
 #define WIDTH 128
 #define HEIGHT 64
@@ -199,4 +199,5 @@ int main(int argc, char* argv[]) {
     SDL_Quit();
     return 0;
 }
+
 
