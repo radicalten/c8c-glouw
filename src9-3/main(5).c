@@ -3,7 +3,7 @@
 
 #include <SDL2/SDL.h>
 
-#include "chippy.h"
+#include "ch8.h"
 
 int main(int argc, char **argv) {
         if (argc < 2) {
