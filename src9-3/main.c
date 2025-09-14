@@ -48,104 +48,104 @@ void window_process_input(struct CH8_Core *cpu) {
                 cpu->is_running = false;
                 break;
                 case SDLK_1:
-                cpu->key[0x0001] = 1;
+                cpu->keys[0x0001] = 1;
                 break;
                 case SDLK_2:
-                cpu->key[0x0002] = 1;
+                cpu->keys[0x0002] = 1;
                 break;
                 case SDLK_3:
-                cpu->key[0x0003] = 1;
+                cpu->keys[0x0003] = 1;
                 break;
                 case SDLK_4:
-                cpu->key[0x000C] = 1;
+                cpu->keys[0x000C] = 1;
                 break;
                 case SDLK_q:
-                cpu->key[0x0004] = 1;
+                cpu->keys[0x0004] = 1;
                 break;
                 case SDLK_w:
-                cpu->key[0x0005] = 1;
+                cpu->keys[0x0005] = 1;
                 break;
                 case SDLK_e:
-                cpu->key[0x0006] = 1;
+                cpu->keys[0x0006] = 1;
                 break;
                 case SDLK_r:
-                cpu->key[0x000D] = 1;
+                cpu->keys[0x000D] = 1;
                 break;
                 case SDLK_a:
-                cpu->key[0x0007] = 1;
+                cpu->keys[0x0007] = 1;
                 break;
                 case SDLK_s:
-                cpu->key[0x0008] = 1;
+                cpu->keys[0x0008] = 1;
                 break;
                 case SDLK_d:
-                cpu->key[0x0009] = 1;
+                cpu->keys[0x0009] = 1;
                 break;
                 case SDLK_f:
-                cpu->key[0x000E] = 1;
+                cpu->keys[0x000E] = 1;
                 break;
                 case SDLK_z:
-                cpu->key[0x000A] = 1;
+                cpu->keys[0x000A] = 1;
                 break;
                 case SDLK_x:
-                cpu->key[0x0000] = 1;
+                cpu->keys[0x0000] = 1;
                 break;
                 case SDLK_c:
-                cpu->key[0x000B] = 1;
+                cpu->keys[0x000B] = 1;
                 break;
                 case SDLK_v:
-                cpu->key[0x000F] = 1;
+                cpu->keys[0x000F] = 1;
                 break;        
             }
             break;
             case SDL_KEYUP:
             switch(e.key.keysym.sym) {
                 case SDLK_1:
-                cpu->key[0x0001] = 0;
+                cpu->keys[0x0001] = 0;
                 break;
                 case SDLK_2:
-                cpu->key[0x0002] = 0;
+                cpu->keys[0x0002] = 0;
                 break;
                 case SDLK_3:
-                cpu->key[0x0003] = 0;
+                cpu->keys[0x0003] = 0;
                 break;
                 case SDLK_4:
-                cpu->key[0x000C] = 0;
+                cpu->keys[0x000C] = 0;
                 break;
                 case SDLK_q:
-                cpu->key[0x0004] = 0;
+                cpu->keys[0x0004] = 0;
                 break;
                 case SDLK_w:
-                cpu->key[0x0005] = 0;
+                cpu->keys[0x0005] = 0;
                 break;
                 case SDLK_e:
-                cpu->key[0x0006] = 0;
+                cpu->keys[0x0006] = 0;
                 break;
                 case SDLK_r:
-                cpu->key[0x000D] = 0;
+                cpu->keys[0x000D] = 0;
                 break;
                 case SDLK_a:
-                cpu->key[0x0007] = 0;
+                cpu->keys[0x0007] = 0;
                 break;
                 case SDLK_s:
-                cpu->key[0x0008] = 0;
+                cpu->keys[0x0008] = 0;
                 break;
                 case SDLK_d:
-                cpu->key[0x0009] = 0;
+                cpu->keys[0x0009] = 0;
                 break;
                 case SDLK_f:
-                cpu->key[0x000E] = 0;
+                cpu->keys[0x000E] = 0;
                 break;
                 case SDLK_z:
-                cpu->key[0x000A] = 0;
+                cpu->keys[0x000A] = 0;
                 break;
                 case SDLK_x:
-                cpu->key[0x0000] = 0;
+                cpu->keys[0x0000] = 0;
                 break;
                 case SDLK_c:
-                cpu->key[0x000B] = 0;
+                cpu->keys[0x000B] = 0;
                 break;
                 case SDLK_v:
-                cpu->key[0x000F] = 0;
+                cpu->keys[0x000F] = 0;
                 break;        
             }
             break;
@@ -199,6 +199,7 @@ int main(int argc, char* argv[]) {
     SDL_Quit();
     return 0;
 }
+
 
 
 
