@@ -1,7 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include "cpu.h"
+#include "ch8.h"
 
 bool window_create();
 void window_process_input(cpu_t *cpu);
