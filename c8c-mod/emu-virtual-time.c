@@ -9,7 +9,7 @@
 #define VSIZE (16)
 #define SSIZE (12)
 #define BFONT (80)
-#define CPU_HZ 700   // CPU cycles per second
+#define CPU_HZ 480   // CPU cycles per second
 #define TIMER_HZ 60  // Timers decrement at 60Hz
 
 static uint64_t vmem[VROWS];
