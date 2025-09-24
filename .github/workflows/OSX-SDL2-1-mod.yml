@@ -2,7 +2,7 @@ name: OSX-SDL2-1-mod
 on:
   push:
     branches:
-    - main
+    - master
 jobs:
   build:
     runs-on: macos-latest
