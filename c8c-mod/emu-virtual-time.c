@@ -237,10 +237,11 @@ int main(int argc, char* argv[])
     key = SDL_GetKeyboardState(NULL);
     load(argv[1]);
     srand(time(0));
-    for(int cycles = 0; !key[SDL_SCANCODE_END] && !key[SDL_SCANCODE_ESCAPE]; cycles++)
+    
+    for(uint64_t cycle_num = 0; !key[SDL_SCANCODE_END] && !key[SDL_SCANCODE_ESCAPE]; cycle_num++) 
     {
-        SDL_PumpEvents(); // Cannot poll an SDL_Event -- Too slow!
-        charge();
+    SDL_PumpEvents();
+    charge();
     cycle(); // executes one CHIP-8 instruction
     cycles_elapsed++;
     
@@ -249,12 +250,12 @@ int main(int argc, char* argv[])
         if (dt > 0) dt--;
         if (st > 0) st--;
     }
+
     if(cycle_num % (CPU_HZ / 60) == 0) // refresh screen at ~60Hz
         output();
 
     discharge();
-        
-    }
+}
     SDL_Quit();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
