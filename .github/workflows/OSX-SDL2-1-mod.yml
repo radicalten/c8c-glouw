@@ -19,7 +19,7 @@ jobs:
         sudo make install
     - name: Compile
       run: |
-        make -f Makefile-mod-9-7.sdl2min
+        make -f Makefile-mod-.sdl2min
     - name: Create tarball
       run: |
           tar -cvf myapp.tgz myapp
