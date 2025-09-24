@@ -1,0 +1,44 @@
+.SUFFIXES:
+export DEVKITPRO:= /opt/devkitpro
+export DEVKITPPC:= $(DEVKITPRO)/devkitPPC
+include $(DEVKITPPC)/wii_rules
+CC 				:= $(DEVKITPPC)/bin/powerpc-eabi-gcc
+
+export TARGET 	:= $(notdir $(CURDIR))
+BUILD 			:= build
+SRCDIR			:= .
+DATA 			:= 
+C_SOURCES 		:= $(foreach dir,$(SRCDIR),$(notdir $(wildcard $(dir)/*.c)))
+export INCLUDES := -I$(DEVKITPRO)/libogc/include -I/opt/devkitpro/portlibs/wii/include -I/opt/devkitpro/portlibs/ppc/include
+
+C_OBJECTS 		:= $(C_SOURCES:.c=.o)
+export OBJECTS 	:= $(C_OBJECTS) 
+
+export VPATH	:= $(foreach dir,$(SRCDIR),$(CURDIR)/$(dir)) \
+				$(foreach dir,$(DATA),$(CURDIR)/$(dir))
+export LD		:= $(CC)
+ELF2DOL   		:= elf2dol
+
+MACHDEP 		:= -DGEKKO -mrvl -mcpu=750 -meabi -mhard-float -fsigned-char -ffast-math -funroll-loops -fauto-inc-dec -finline-functions
+FLAGS    		+= -O3 -Wall -Wextra -ffast-math -fpermissive
+DEFINES  		+=
+CFLAGS 			+= $(FLAGS) $(DEFINES) $(INCLUDES) 
+export LDFLAGS 	+= $(CFLAGS) $(MACHDEP) \
+-Wl,-Map,$(notdir $@).map \
+-L$(DEVKITPRO)/libogc/lib/wii \
+-L/opt/devkitpro/portlibs/wii/lib \
+-L/opt/devkitpro/portlibs/ppc/lib \
+-L/opt/devkitpro/devkitPPC/lib \
+-L. \
+-lwiiuse -lbte -lfat -logc -lm
+
+all: $(TARGET).dol
+$(TARGET).dol: $(TARGET).elf
+	$(ELF2DOL) $< $@
+$(TARGET).elf: $(OBJECTS)
+	$(CC) $^ -o $@ $(LDFLAGS)
+%.o: %.c
+	$(CC) -c $< -o $@ $(CFLAGS)
+clean:
+	@rm -fr $(TARGET).elf $(TARGET).dol $(OBJECTS)
+.PHONY: test clean
