@@ -251,3 +251,153 @@ int main(int argc, char* argv[])
     SDL_DestroyWindow(window);
 }
 
+
+/*
+
+Absolutely. Here’s a minimal, self-contained way to make your emulator run on purely virtual time (no wall-clock dependency for timers or frame pacing). The idea:
+
+- Define a virtual CPU frequency (VCPU_HZ), and advance virtual time by one “cycle” per instruction.
+- Decrement dt/st at exactly 60 Hz in virtual time (TIMER_HZ), not on every instruction.
+- Render frames at a virtual 60 Hz (VIDEO_HZ).
+- Make the pixel fade (discharge) happen per virtual frame, not per instruction. To preserve your original “feel,” we derive a per-frame decay factor from your original per-cycle 0.997.
+
+Below is a patch-style set of changes you can drop in. It keeps your loop fast-as-possible, but all emulated time runs purely off instruction count.
+
+What changes:
+- Added Bresenham-like integer accumulators for timers and video ticks.
+- Moved dt/st decrement out of cycle() and into virtual-timer ticks.
+- Output() now runs at 60 “virtual frames per second.”
+- Discharge now uses a per-frame factor equivalent to your original per-cycle factor, based on VCPU_HZ.
+
+Notes:
+- You’ll need to link with -lm for powf.
+- If you also want deterministic runs, seed rand with a constant instead of time(0). I left your srand(time(0)) as-is.
+
+Patch (key edits only)
+
+- Includes and new defines:
+
+```c
+#include <SDL2/SDL.h>
+#include <stdint.h>
+#include <time.h>
+#include <math.h>  // NEW
+...
+#define BFONT (80)
+
+// Virtual timing parameters (adjust VCPU_HZ to taste)
+#define VCPU_HZ  (700u)  // virtual CPU cycles/sec
+#define TIMER_HZ (60u)   // CHIP-8 timers
+#define VIDEO_HZ (60u)   // “frame rate” for output
+```
+
+- Global accumulators and discharge factor:
+
+```c
+static uint32_t acc_timer = 0;   // accumulates TIMER_HZ per CPU cycle, wraps at VCPU_HZ
+static uint32_t acc_video = 0;   // accumulates VIDEO_HZ per CPU cycle, wraps at VCPU_HZ
+static float discharge_step = 1.0f; // per-video-tick decay factor, derived from 0.997 per cycle
+```
+
+- Timer tick helper:
+
+```c
+static inline void tick_timers(void)
+{
+    if(dt > 0) dt--;
+    if(st > 0)
+    {
+        st--;
+        if(st)
+        {
+            /* Beep */
+        }
+    }
+}
+```
+
+- Make cycle() purely instruction execution (remove real-time timer logic):
+
+```c
+static void cycle()
+{
+    op = (mem[pc] << 8) + (mem[pc + 1] & 0x00FF);
+    pc += 0x0002;
+    (*exec[op >> 12])();
+}
+```
+
+- Make discharge per virtual frame (uses discharge_step instead of 0.997 per cycle):
+
+```c
+static void discharge()
+{
+    for(int j = 0; j < VROWS; j++)
+    for(int i = 0; i < VCOLS; i++)
+        if(!charging(j, i))
+            charges[j][i] = (uint8_t)((float)charges[j][i] * discharge_step);
+}
+```
+
+- In main(), initialize discharge_step and restructure the loop to use virtual time:
+
+```c
+int main(int argc, char* argv[])
+{
+    ...
+    SDL_SetWindowTitle(window, "Emu-1.0");
+    ...
+    key = SDL_GetKeyboardState(NULL);
+    load(argv[1]);
+
+    // Keep or change for determinism. For purely virtual time this is OK:
+    srand(time(0));
+
+    // Derive per-video-tick decay from your original per-cycle 0.997:
+    // Equivalent per-frame factor = 0.997 ^ (cycles per frame)
+    discharge_step = powf(0.997f, (float)VCPU_HZ / (float)VIDEO_HZ);
+
+    for(uint64_t cycles = 0; !key[SDL_SCANCODE_END] && !key[SDL_SCANCODE_ESCAPE]; cycles++)
+    {
+        SDL_PumpEvents(); // still needed to keep keyboard state fresh
+
+        // Execute one instruction (one virtual CPU cycle)
+        cycle();
+
+        // Keep “charge” immediate so lit pixels show up on next frame
+        charge();
+
+        // Virtual 60 Hz timer ticks
+        acc_timer += TIMER_HZ;
+        while (acc_timer >= VCPU_HZ) {
+            acc_timer -= VCPU_HZ;
+            tick_timers();
+        }
+
+        // Virtual 60 Hz video updates
+        acc_video += VIDEO_HZ;
+        while (acc_video >= VCPU_HZ) {
+            acc_video -= VCPU_HZ;
+            output();
+            discharge();
+        }
+    }
+    ...
+}
+```
+
+Build tip
+- Add -lm when linking due to powf:
+  gcc -O2 your_file.c -lSDL2 -lm -o emu
+
+Why this is “purely virtual time”
+- The emulator advances its own notion of time based only on the number of executed instructions (virtual CPU cycles).
+- Timers (dt/st) tick at 60 Hz in that virtual timeline, so every run progresses the same way per instruction, regardless of wall-clock speed.
+- Rendering and fading also occur at 60 virtual Hz, making visuals deterministic relative to executed cycles.
+
+Want deterministic RNG too?
+- Replace srand(time(0)) with srand(0) (or a fixed seed) and you’ll get fully deterministic replays across machines.
+
+If you want me to fold these changes into your full file and return the complete updated source, say the word and tell me your preferred VCPU_HZ.
+
+*/
