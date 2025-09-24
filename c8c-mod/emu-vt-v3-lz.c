@@ -363,3 +363,25 @@ int main(int argc, char* argv[])
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
 }
+
+
+/* gpt-5-high
+    Nice! Below is your code updated to use lazy flag evaluation for VF. The emulator now defers computing VF for ADD/SUB/SHR/SHL until VF is actually read. Reading VF (as a source register) triggers realization; writing to VF cancels any pending lazy flag. DXYN (sprite draw) still computes VF immediately for correctness without redoing the blit.
+
+What changed (brief):
+- Added a tiny lazy-VF engine: defer setting VF after 8XY4/5/7/6/E; compute only when V[F] is read.
+- Added READV/WRITEV helpers to auto-realize/cancel lazy flags when reading/writing V[F].
+- Updated all op handlers that read/write registers to use READV/WRITEV where relevant.
+
+
+
+Notes:
+- VF is now computed lazily for 8XY4/5/7/6/E. If a program never reads VF before it’s overwritten, we never compute it.
+- Any read of V[F] via X=F or Y=F in ops like 3XNN/4XNN/5XY0/9XY0/8XYN/FX55 triggers realization.
+- Any write to V[F] cancels the pending lazy flag.
+- DXYN keeps immediate VF collision semantics for correctness.
+
+Want me to convert this into a unified diff instead?
+    */
+
+
