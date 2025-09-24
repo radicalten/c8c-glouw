@@ -3,6 +3,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define VROWS (32)
 #define VCOLS (64)
@@ -225,11 +226,8 @@ static void charge()
 
 static void discharge()
 {
-    // No decay: instantly turn off pixels that are not currently on
-    for(int j = 0; j < VROWS; j++)
-    for(int i = 0; i < VCOLS; i++)
-        if(!charging(j, i))
-            charges[j][i] = 0x00;
+    // Single-frame persistence: clear the entire charge buffer once per frame
+    memset(charges, 0x00, sizeof(charges));
 }
 
 void dump()
