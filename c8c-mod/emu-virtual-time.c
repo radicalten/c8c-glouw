@@ -9,6 +9,8 @@
 #define VSIZE (16)
 #define SSIZE (12)
 #define BFONT (80)
+#define CPU_HZ 700   // CPU cycles per second
+#define TIMER_HZ 60  // Timers decrement at 60Hz
 
 static uint64_t vmem[VROWS];
 
@@ -23,6 +25,9 @@ static uint8_t sp;
 static uint8_t v[VSIZE];
 static uint8_t mem[BYTES];
 static uint8_t charges[VROWS][VCOLS];
+
+static uint64_t cycles_elapsed = 0;
+static uint64_t timer_counter = 0;
 
 static const uint8_t* key;
 
@@ -170,12 +175,7 @@ static void load(const char* game)
 
 static void cycle()
 {
-    if(dt > 0) dt--;
-    if(st > 0) st--;
-    if(st)
-    {
-        /* Beep */
-    }
+    // timers removed from here!
     op = (mem[pc] << 8) + (mem[pc + 1] & 0x00FF);
     pc += 0x0002;
     (*exec[op >> 12])();
@@ -241,12 +241,109 @@ int main(int argc, char* argv[])
     {
         SDL_PumpEvents(); // Cannot poll an SDL_Event -- Too slow!
         charge();
-        cycle();
-        if(cycles % 15 == 0)
-            output();
-        discharge();
+    cycle(); // executes one CHIP-8 instruction
+    cycles_elapsed++;
+    
+    // Update timers every CPU_HZ / TIMER_HZ cycles
+    if (cycles_elapsed % (CPU_HZ / TIMER_HZ) == 0) {
+        if (dt > 0) dt--;
+        if (st > 0) st--;
+    }
+    if(cycle_num % (CPU_HZ / 60) == 0) // refresh screen at ~60Hz
+        output();
+
+    discharge();
+        
     }
     SDL_Quit();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
 }
+
+
+/*
+
+Ah, lovely — you have a CHIP‑8 emulator here, and you want to implement **purely virtual time** instead of relying on real‐world time. Right now, your emulator tick logic uses real delays implicitly through `SDL` and the CPU loop. You decrement timers (`dt`, `st`) once per `cycle()`, and tie “time” to however quickly the host machine spins through the for‐loop. That works fine if you run at the “speed of light,” but then your CHIP‑8 games finish blinking before you can even line up a glass of water. 🥲
+
+What CHIP‑8 actually wants:
+- **Timers (`dt` and `st`)** should progress at exactly **60Hz** (one decrement every 1/60 second).  
+- The **CPU cycles** in CHIP‑8 do not have a fixed speed, but they’re usually ~500–1000 instructions per second.  
+
+Right now, your code just decrements timers once per `cycle()`, which makes them host‑dependent and way too fast.
+
+---
+
+### Purely Virtual Time Strategy
+We’ll separate:
+1. **Virtual CPU cycles:** Driven by a “virtual clock tick” (`cpu_hz`, e.g., 700Hz).
+2. **Timers:** Driven by a fixed **60Hz ticker**.
+3. No dependence on `SDL_Delay()` or wall clock; instead, we accumulate "fractional cycles" in a **virtual counter**.
+
+---
+
+### Key Adjustments
+
+1. **Define constants:**
+```c
+#define CPU_HZ 700   // CPU cycles per second
+#define TIMER_HZ 60  // Timers decrement at 60Hz
+```
+
+2. **Track virtual time in cycles, not real milliseconds:**
+Maintain two counters:
+```c
+static uint64_t cycles_elapsed = 0;
+static uint64_t timer_counter = 0;
+```
+
+3. **Main loop increments `cycles_elapsed`:**
+```c
+for(uint64_t cycle_num = 0; !key[SDL_SCANCODE_END] && !key[SDL_SCANCODE_ESCAPE]; cycle_num++) {
+    SDL_PumpEvents();
+    charge();
+    cycle(); // executes one CHIP-8 instruction
+    cycles_elapsed++;
+    
+    // Update timers every CPU_HZ / TIMER_HZ cycles
+    if (cycles_elapsed % (CPU_HZ / TIMER_HZ) == 0) {
+        if (dt > 0) dt--;
+        if (st > 0) st--;
+    }
+
+    if(cycle_num % (CPU_HZ / 60) == 0) // refresh screen at ~60Hz
+        output();
+
+    discharge();
+}
+```
+
+4. **Remove timer decrement from inside `cycle()`:**
+```c
+static void cycle()
+{
+    // timers removed from here!
+    op = (mem[pc] << 8) + (mem[pc + 1] & 0x00FF);
+    pc += 0x0002;
+    (*exec[op >> 12])();
+}
+```
+
+---
+
+### Why is this "purely virtual time"?
+- All flows depend only on **emulated CPU cycles**, not `time.h`, not actual wall clock.  
+- If you speed up the emulator, “virtual 1 sec” is when **CPU executes CPU_HZ cycles**.  
+- The emulated delays and sound timers remain steady and portable.  
+- Games that use timers (like Pong, Space Invaders clones, etc.) now behave accurately regardless of how fast your host spins that loop.
+
+---
+
+### Optional: "Warp Speed" Mode
+If you feel playful, you could add a toggle key that just sets `CPU_HZ = 10 * CPU_HZ`. Then CHIP‑8 games will play “turbo,” but because timers still tick at 60Hz virtual, they’ll feel like Benny Hill sketches. 🎺
+
+---
+
+In short: take decrementing the timers **out of `cycle()`**, tie them to every `(CPU_HZ / 60)` cycles in the main loop, and voilà — you’ve implemented CHIP‑8’s timers in **virtual emulated time** instead of wall‑clock time.
+
+*/
+
