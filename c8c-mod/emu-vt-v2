@@ -252,7 +252,7 @@ int main(int argc, char* argv[])
 }
 
 
-/*
+/* gpt-5-high
 
 Absolutely. Here’s a minimal, self-contained way to make your emulator run on purely virtual time (no wall-clock dependency for timers or frame pacing). The idea:
 
