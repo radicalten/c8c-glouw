@@ -262,7 +262,7 @@ int main(int argc, char* argv[])
 }
 
 
-/*
+/* gpt-5-chat
 
 Ah, lovely — you have a CHIP‑8 emulator here, and you want to implement **purely virtual time** instead of relying on real‐world time. Right now, your emulator tick logic uses real delays implicitly through `SDL` and the CPU loop. You decrement timers (`dt`, `st`) once per `cycle()`, and tie “time” to however quickly the host machine spins through the for‐loop. That works fine if you run at the “speed of light,” but then your CHIP‑8 games finish blinking before you can even line up a glass of water. 🥲
 
