@@ -1,0 +1,388 @@
+#include <SDL2/SDL.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+// --- Virtual Time Configuration ---
+#define CPU_HZ      (700)     // Target CPU frequency in Hz. ~500-700Hz is a good range.
+#define TIMER_HZ    (60)      // Timers decrement at 60Hz, as per spec.
+#define TARGET_FPS  (60)      // Target screen refresh rate.
+
+// --- Emulator Constants ---
+#define VROWS (32)
+#define VCOLS (64)
+#define BYTES (4096)
+#define START (0x0200)
+#define VSIZE (16)
+#define SSIZE (12)
+#define BFONT (80)
+
+// --- CHIP-8 State ---
+static uint64_t vmem[VROWS];
+
+static uint16_t pc = START;
+static uint16_t I;
+static uint16_t s[SSIZE];
+static uint16_t op;
+
+static uint8_t dt;
+static uint8_t st;
+static uint8_t sp;
+static uint8_t v[VSIZE];
+static uint8_t mem[BYTES];
+
+// --- Graphics & Input ---
+static uint8_t charges[VROWS][VCOLS];
+static const uint8_t* key;
+static SDL_Window* window;
+static SDL_Renderer* renderer;
+
+// --- Lazy Flag Evaluation State ---
+typedef enum {
+    NO_FLAG,
+    FLAG_ADD,
+    FLAG_SUB,
+    FLAG_SUBN,
+    FLAG_SHIFT_R,
+    FLAG_SHIFT_L,
+} LazyFlagType;
+
+static LazyFlagType pending_flag = NO_FLAG;
+static uint8_t lazy_op1, lazy_op2; // Operands for the lazy flag calculation
+
+// --- Function Declarations for Opcode Table ---
+static void _0___();
+static void _8___();
+static void _E___();
+static void _F___();
+
+// --- Lazy Flag Evaluation Implementation ---
+// This function is called at the start of each CPU cycle to ensure
+// v[0xF] is correct before the next instruction executes.
+static void evaluate_lazy_flags() {
+    if (pending_flag == NO_FLAG) {
+        return;
+    }
+
+    switch (pending_flag) {
+        case FLAG_ADD:
+            // Set VF if there was a carry
+            v[0xF] = ((uint16_t)lazy_op1 + (uint16_t)lazy_op2 > 0xFF) ? 1 : 0;
+            break;
+        case FLAG_SUB:
+            // Set VF if there was NO borrow (op1 >= op2)
+            v[0xF] = (lazy_op1 >= lazy_op2) ? 1 : 0;
+            break;
+        case FLAG_SUBN:
+            // Set VF if there was NO borrow (op2 >= op1)
+            v[0xF] = (lazy_op2 >= lazy_op1) ? 1 : 0;
+            break;
+        case FLAG_SHIFT_R:
+            // Set VF to the least significant bit of op1 before the shift
+            v[0xF] = lazy_op1 & 0x1;
+            break;
+        case FLAG_SHIFT_L:
+            // Set VF to the most significant bit of op1 before the shift
+            v[0xF] = (lazy_op1 >> 7) & 0x1;
+            break;
+        case NO_FLAG:
+            break; // Should not happen due to the check above
+    }
+    // Reset the flag state
+    pending_flag = NO_FLAG;
+}
+
+// --- Input Handling ---
+static int input(const int waiting) {
+    do {
+        SDL_PumpEvents();
+        if(key[SDL_SCANCODE_1]) return 0x01;
+        if(key[SDL_SCANCODE_2]) return 0x02;
+        if(key[SDL_SCANCODE_3]) return 0x03;
+        if(key[SDL_SCANCODE_4]) return 0x0C;
+        if(key[SDL_SCANCODE_Q]) return 0x04;
+        if(key[SDL_SCANCODE_W]) return 0x05;
+        if(key[SDL_SCANCODE_E]) return 0x06;
+        if(key[SDL_SCANCODE_R]) return 0x0D;
+        if(key[SDL_SCANCODE_A]) return 0x07;
+        if(key[SDL_SCANCODE_S]) return 0x08;
+        if(key[SDL_SCANCODE_D]) return 0x09;
+        if(key[SDL_SCANCODE_F]) return 0x0E;
+        if(key[SDL_SCANCODE_Z]) return 0x0A;
+        if(key[SDL_SCANCODE_X]) return 0x00;
+        if(key[SDL_SCANCODE_C]) return 0x0B;
+        if(key[SDL_SCANCODE_V]) return 0x0F;
+    } while(waiting);
+    return -1;
+}
+
+// --- Opcode Implementations ---
+static void _0000() { /* no-op */ }
+static void _00E0() { for(int j = 0; j < VROWS; j++) vmem[j] = 0; }
+static void _00EE() { pc = s[--sp]; }
+static void _1NNN() { uint16_t nnn = op & 0x0FFF; pc = nnn; }
+static void _2NNN() { uint16_t nnn = op & 0x0FFF; s[sp++] = pc; pc = nnn; }
+static void _3XNN() { uint16_t x = (op & 0x0F00) >> 8, nn = op & 0x00FF; if(v[x] == nn) pc += 2; }
+static void _4XNN() { uint16_t x = (op & 0x0F00) >> 8, nn = op & 0x00FF; if(v[x] != nn) pc += 2; }
+static void _5XY0() { uint16_t x = (op & 0x0F00) >> 8, y = (op & 0x00F0) >> 4; if(v[x] == v[y]) pc += 2; }
+static void _6XNN() { uint16_t nn = op & 0x00FF, x = (op & 0x0F00) >> 8; v[x]  = nn; }
+static void _7XNN() { uint16_t nn = op & 0x00FF, x = (op & 0x0F00) >> 8; v[x] += nn; }
+static void _8XY0() { uint16_t x = (op & 0x0F00) >> 8, y = (op & 0x00F0) >> 4; v[x]  = v[y]; }
+static void _8XY1() { uint16_t x = (op & 0x0F00) >> 8, y = (op & 0x00F0) >> 4; v[x] |= v[y]; }
+static void _8XY2() { uint16_t x = (op & 0x0F00) >> 8, y = (op & 0x00F0) >> 4; v[x] &= v[y]; }
+static void _8XY3() { uint16_t x = (op & 0x0F00) >> 8, y = (op & 0x00F0) >> 4; v[x] ^= v[y]; }
+// MODIFIED INSTRUCTIONS FOR LAZY FLAGS
+static void _8XY4() { uint16_t x = (op & 0x0F00) >> 8, y = (op & 0x00F0) >> 4; lazy_op1 = v[x]; lazy_op2 = v[y]; pending_flag = FLAG_ADD; v[x] += v[y]; }
+static void _8XY5() { uint16_t x = (op & 0x0F00) >> 8, y = (op & 0x00F0) >> 4; lazy_op1 = v[x]; lazy_op2 = v[y]; pending_flag = FLAG_SUB; v[x] -= v[y]; }
+static void _8XY7() { uint16_t x = (op & 0x0F00) >> 8, y = (op & 0x00F0) >> 4; lazy_op1 = v[x]; lazy_op2 = v[y]; pending_flag = FLAG_SUBN; v[x] = v[y] - v[x]; }
+static void _8XY6() { uint16_t x = (op & 0x0F00) >> 8, y = (op & 0x00F0) >> 4; lazy_op1 = v[y]; pending_flag = FLAG_SHIFT_R; v[x] = v[y] >> 1; }
+static void _8XYE() { uint16_t x = (op & 0x0F00) >> 8, y = (op & 0x00F0) >> 4; lazy_op1 = v[y]; pending_flag = FLAG_SHIFT_L; v[x] = v[y] << 1; }
+// END MODIFICATIONS
+static void _9XY0() { uint16_t x = (op & 0x0F00) >> 8, y = (op & 0x00F0) >> 4; if(v[x] != v[y]) pc += 2; }
+static void _ANNN() { uint16_t nnn = op & 0x0FFF; I = nnn; }
+static void _BNNN() { uint16_t nnn = op & 0x0FFF; pc = nnn + v[0x0]; }
+static void _CXNN() { uint16_t x = (op & 0x0F00) >> 8, nn = op & 0x00FF; v[x] = nn & (rand() % 256); }
+static void _DXYN() {
+    uint16_t x = (op & 0x0F00) >> 8;
+    uint16_t y = (op & 0x00F0) >> 4;
+    uint16_t n = (op & 0x000F);
+    
+    // Drawing can set v[0xF], so any pending flag must be evaluated now.
+    evaluate_lazy_flags();
+    v[0xF] = 0; 
+    
+    for (int j = 0; j < n; j++) {
+        uint8_t row = (v[y] + j) % VROWS;
+        uint8_t sprite_byte = mem[I + j];
+        
+        for (int i = 0; i < 8; i++) {
+            uint8_t col = (v[x] + i) % VCOLS;
+            uint64_t sprite_pixel_mask = (uint64_t)1 << (VCOLS - 1 - col);
+            
+            // Check if sprite pixel is on
+            if ((sprite_byte & (0x80 >> i)) != 0) {
+                // Check if screen pixel is already on (collision)
+                if ((vmem[row] & sprite_pixel_mask) != 0) {
+                    v[0xF] = 1;
+                }
+                vmem[row] ^= sprite_pixel_mask;
+            }
+        }
+    }
+}
+static void _EXA1() { uint16_t x = (op & 0x0F00) >> 8; if(v[x] != input(0)) pc += 2; }
+static void _EX9E() { uint16_t x = (op & 0x0F00) >> 8; if(v[x] == input(0)) pc += 2; }
+static void _FX07() { uint16_t x = (op & 0x0F00) >> 8; v[x] = dt; }
+static void _FX0A() { uint16_t x = (op & 0x0F00) >> 8; v[x] = input(1); }
+static void _FX15() { uint16_t x = (op & 0x0F00) >> 8; dt = v[x]; }
+static void _FX18() { uint16_t x = (op & 0x0F00) >> 8; st = v[x]; }
+static void _FX1E() { uint16_t x = (op & 0x0F00) >> 8; I += v[x]; }
+static void _FX29() { uint16_t x = (op & 0x0F00) >> 8; I = 5 * v[x]; }
+static void _FX33() { uint16_t x = (op & 0x0F00) >> 8;
+    mem[I + 0] = v[x] / 100;
+    mem[I + 1] = (v[x] / 10) % 10;
+    mem[I + 2] = v[x] % 10;
+}
+// FX55/FX65 spec does not modify I, but older implementations did. Sticking to spec.
+static void _FX55() { uint16_t x = (op & 0x0F00) >> 8; for(int i = 0; i <= x; i++) mem[I + i] = v[i]; }
+static void _FX65() { uint16_t x = (op & 0x0F00) >> 8; for(int i = 0; i <= x; i++) v[i] = mem[I + i]; }
+
+// --- Opcode Function Pointer Tables ---
+static void (*opsa[])() = { _00E0, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _00EE, _0000 };
+static void (*opsb[])() = { _8XY0, _8XY1, _8XY2, _8XY3, _8XY4, _8XY5, _8XY6, _8XY7, _0000, _0000, _0000, _0000, _0000, _0000, _8XYE, _0000 };
+static void (*opsc[])() = { _0000, _EXA1, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _EX9E, _0000 };
+static void (*opsd[])() = { _0000, _0000, _0000, _0000, _0000, _0000, _0000, _FX07, _0000, _0000, _FX0A, _0000, _0000, _0000, _0000, _0000,
+                            _0000, _0000, _0000, _0000, _0000, _FX15, _0000, _0000, _FX18, _0000, _0000, _0000, _0000, _0000, _FX1E, _0000,
+                            _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _FX29, _0000, _0000, _0000, _0000, _0000, _0000,
+                            _0000, _0000, _0000, _FX33, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000,
+                            _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000,
+                            _0000, _0000, _0000, _0000, _0000, _FX55, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000,
+                            _0000, _0000, _0000, _0000, _0000, _FX65, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000,
+                            _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000 };
+static void (*exec[])() = { _0___, _1NNN, _2NNN, _3XNN, _4XNN, _5XY0, _6XNN, _7XNN, _8___, _9XY0, _ANNN, _BNNN, _CXNN, _DXYN, _E___, _F___ };
+
+// --- Opcode Dispatchers ---
+static void _0___() { (*opsa[op & 0x000F])(); }
+static void _8___() { (*opsb[op & 0x000F])(); }
+static void _E___() { (*opsc[op & 0x000F])(); }
+static void _F___() { (*opsd[op & 0x00FF])(); }
+
+// --- File Loading ---
+static void load(const char* game) {
+    const uint8_t ch[BFONT] = {
+        0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+        0x20, 0x60, 0x20, 0x20, 0x70, // 1
+        0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+        0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+        0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+        0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+        0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+        0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+        0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+        0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+        0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+        0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+        0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+        0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+        0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+        0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+    };
+    FILE* const fp = fopen(game, "rb");
+    if(fp == NULL) {
+        fprintf(stderr, "error: binary '%s' not found\n", game);
+        exit(1);
+    }
+    fseek(fp, 0, SEEK_END);
+    const long size = ftell(fp);
+    rewind(fp);
+    if (size > BYTES - START) {
+        fprintf(stderr, "error: binary '%s' is too large for memory\n", game);
+        fclose(fp);
+        exit(1);
+    }
+    fread(&mem[START], 1, size, fp);
+    fclose(fp);
+    for(int i = 0; i < BFONT; i++) {
+        mem[i] = ch[i];
+    }
+}
+
+// --- Emulator Core Loop Functions ---
+static void update_timers() {
+    if (dt > 0) dt--;
+    if (st > 0) {
+        st--;
+        if (st == 0) {
+            /* Beep would happen here */
+        }
+    }
+}
+
+static void cycle() {
+    // Evaluate any flag from the *previous* instruction before executing a new one.
+    evaluate_lazy_flags();
+
+    op = (mem[pc] << 8) | mem[pc + 1];
+    pc += 2;
+    (*exec[op >> 12])();
+}
+
+// --- Graphics Functions ---
+static void output() {
+    for(int j = 0; j < VROWS; j++) {
+        for(int i = 0; i < VCOLS; i++) {
+            SDL_SetRenderDrawColor(renderer, charges[j][i], 0x00, 0x00, 0x00);
+            const int w = 8;
+            const SDL_Rect rect = { i * w + 1, j * w + 1, w - 2, w - 2 };
+            SDL_RenderFillRect(renderer, &rect);
+        }
+    }
+    SDL_RenderPresent(renderer);
+}
+
+static int charging(const int j, const int i) {
+    return (vmem[j] >> (VCOLS - 1 - i)) & 0x1;
+}
+
+static void charge() {
+    for(int j = 0; j < VROWS; j++) {
+        for(int i = 0; i < VCOLS; i++) {
+            if(charging(j, i)) {
+                charges[j][i] = 0xFF;
+            }
+        }
+    }
+}
+
+static void discharge() {
+    for(int j = 0; j < VROWS; j++) {
+        for(int i = 0; i < VCOLS; i++) {
+            if(!charging(j, i)) {
+                // Slower, more visible decay
+                if (charges[j][i] > 0) charges[j][i]--; 
+            }
+        }
+    }
+}
+
+// --- Main Function ---
+int main(int argc, char* argv[]) {
+    if(argc != 2) {
+        fprintf(stderr, "Usage: %s <path/to/rom>\n", argv[0]);
+        exit(1);
+    }
+
+    SDL_Init(SDL_INIT_VIDEO);
+    SDL_CreateWindowAndRenderer(VCOLS * 8, VROWS * 8, 0, &window, &renderer);
+    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
+    SDL_SetWindowTitle(window, "CHIP-8 Emulator");
+    SDL_RenderClear(renderer);
+    SDL_RenderPresent(renderer);
+
+    key = SDL_GetKeyboardState(NULL);
+    load(argv[1]);
+    srand(time(0));
+
+    // --- Virtual Time Main Loop ---
+    uint64_t perf_freq = SDL_GetPerformanceFrequency();
+    uint64_t last_time = SDL_GetPerformanceCounter();
+
+    double cpu_nanos_per_cycle = 1e9 / CPU_HZ;
+    double timer_nanos_per_tick = 1e9 / TIMER_HZ;
+    double frame_nanos_per_tick = 1e9 / TARGET_FPS;
+
+    double cpu_accumulator_ns = 0.0;
+    double timer_accumulator_ns = 0.0;
+    double frame_accumulator_ns = 0.0;
+
+    int running = 1;
+    while(running) {
+        uint64_t now = SDL_GetPerformanceCounter();
+        double delta_time_ns = (double)(now - last_time) * 1e9 / perf_freq;
+        last_time = now;
+
+        cpu_accumulator_ns += delta_time_ns;
+        timer_accumulator_ns += delta_time_ns;
+        frame_accumulator_ns += delta_time_ns;
+
+        SDL_Event event;
+        while(SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                running = 0;
+            }
+        }
+        if (key[SDL_SCANCODE_ESCAPE]) {
+            running = 0;
+        }
+
+        // Run CPU cycles based on accumulated time
+        while (cpu_accumulator_ns >= cpu_nanos_per_cycle) {
+            cycle();
+            cpu_accumulator_ns -= cpu_nanos_per_cycle;
+        }
+
+        // Update timers based on accumulated time
+        while (timer_accumulator_ns >= timer_nanos_per_tick) {
+            update_timers();
+            timer_accumulator_ns -= timer_nanos_per_tick;
+        }
+        
+        // Render a frame if enough time has passed
+        if (frame_accumulator_ns >= frame_nanos_per_tick) {
+            charge();
+            output();
+            discharge();
+            frame_accumulator_ns -= frame_nanos_per_tick;
+        }
+        
+        // Yield to the OS to prevent 100% CPU usage
+        SDL_Delay(1);
+    }
+
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
+    return 0;
+}
