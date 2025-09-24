@@ -704,3 +704,34 @@ Want me to keep a single-frame persistence instead (turn off only on the next fr
 
 */
 
+
+/*
+Got it — single-frame persistence it is. Clear the charge buffer once per virtual frame (right after output), regardless of current vmem. That way, any pixel that was lit at any time during the frame shows up in that frame, and only persists if it’s lit again in the next frame.
+
+Make these two small changes:
+
+1) Add the header
+- Near your includes:
+```c
+#include <string.h> // for memset
+```
+
+2) Replace discharge() with a full clear
+```c
+static void discharge()
+{
+    // Single-frame persistence: clear the entire charge buffer once per frame
+    memset(charges, 0x00, sizeof(charges));
+}
+```
+
+Keep the order in your virtual video tick as:
+```c
+output();
+discharge();
+```
+
+No other changes needed. Also, since we removed the decay math, you don’t need to link with -lm anymore.
+
+*/
+
