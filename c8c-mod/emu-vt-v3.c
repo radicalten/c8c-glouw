@@ -14,7 +14,7 @@
 #define BFONT (80)
 
 // Virtual timing parameters (adjust VCPU_HZ to taste)
-#define VCPU_HZ  (700u)  // virtual CPU cycles/sec
+#define VCPU_HZ  (600u)  // virtual CPU cycles/sec
 #define TIMER_HZ (60u)   // CHIP-8 timers tick at 60 Hz
 #define VIDEO_HZ (60u)   // virtual "frame rate" for output
 
