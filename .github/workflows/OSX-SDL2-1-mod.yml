@@ -26,6 +26,6 @@ jobs:
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
-        name: queso-fuego-chip8
+        name: c8c-mod-vt
         path: |
           .
