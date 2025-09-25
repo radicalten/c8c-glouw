@@ -228,10 +228,8 @@ static void charge()
 
 static void discharge()
 {
-    for(int j = 0; j < VROWS; j++)
-    for(int i = 0; i < VCOLS; i++)
-        if(!charging(j, i))
-            charges[j][i] *= 1;
+    // Single-frame persistence: clear the entire charge buffer once per frame
+    memset(charges, 0x00, sizeof(charges));
 }
 
 void dump()
