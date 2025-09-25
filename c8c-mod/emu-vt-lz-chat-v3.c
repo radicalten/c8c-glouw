@@ -204,7 +204,7 @@ static void output()
     for(int j = 0; j < VROWS; j++)
     for(int i = 0; i < VCOLS; i++)
     {
-        SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
+        SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
         const int w = 8;
         const SDL_Rect rect = { i * w + 1, j * w + 1, w - 2, w - 2 };
         SDL_RenderFillRect(renderer, &rect);
@@ -428,7 +428,7 @@ int main(int argc, char* argv[])
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
     SDL_CreateWindowAndRenderer(512, 256, 0, &window, &renderer);
-    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
+    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
     SDL_SetWindowTitle(window, "Emu-1.0");
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
