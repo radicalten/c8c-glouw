@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 
 // Display and memory configuration
 #define VROWS (32)
@@ -105,8 +106,9 @@ static void _DXYN() {
     uint8_t flag = 0;
     for(int j = 0; j < n; j++)
     {
+        if (v[y] + j >= VROWS) continue; // basic clip to avoid OOB
         uint64_t line = (uint64_t) mem[I + j] << (VCOLS - 8);
-        line >>= v[x];
+        line >>= (v[x] % VCOLS);
         if((vmem[v[y] + j] ^ line) != (vmem[v[y] + j] | line))
             flag = 1;
         vmem[v[y] + j] ^= line;
@@ -137,7 +139,7 @@ static void _F___();
 static void (*opsa[])() = { _00E0, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _00EE, _0000 };
 static void (*opsb[])() = { _8XY0, _8XY1, _8XY2, _8XY3, _8XY4, _8XY5, _8XY6, _8XY7, _0000, _0000, _0000, _0000, _0000, _0000, _8XYE, _0000 };
 static void (*opsc[])() = { _0000, _EXA1, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _EX9E, _0000 };
-static void (*opsd[])() = { _0000, _0000, _0000, _0000, _0000, _0000, _0000, _FX07, _0000, _0000, _FX0A, _0000, _0000, _0000, _0000, _0000,
+static void (*opsd[])() = { _0000, _0000, _0000, _0000, _0000, _FX07, _0000, _0000, _FX0A, _0000, _0000, _0000, _0000, _0000, _0000, _0000,
 /*************************/ _0000, _0000, _0000, _0000, _0000, _FX15, _0000, _0000, _FX18, _0000, _0000, _0000, _0000, _0000, _FX1E, _0000,
 /*                       */ _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _FX29, _0000, _0000, _0000, _0000, _0000, _0000,
 /*                       */ _0000, _0000, _0000, _FX33, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000, _0000,
@@ -178,14 +180,23 @@ static void load(const char* game)
         exit(1);
     }
     fseek(fp, 0, SEEK_END);
-    const long size = ftell(fp);
+    long fsize = ftell(fp);
+    if (fsize < 0) { fclose(fp); fprintf(stderr, "error: failed to get file size\n"); exit(1); }
     rewind(fp);
+    if (fsize > (long)(BYTES - START)) fsize = BYTES - START;
+
     uint8_t buf[BYTES];
-    fread(buf, 1, size, fp);
+    size_t nread = fread(buf, 1, (size_t)fsize, fp);
     fclose(fp);
+
+    if (nread != (size_t)fsize) {
+        fprintf(stderr, "error: failed to read binary\n");
+        exit(1);
+    }
+
     for(int i = 0; i < BFONT; i++)
         mem[i] = ch[i];
-    for(int i = 0; i < size; i++)
+    for(int i = 0; i < (int)fsize; i++)
         mem[i + START] = buf[i];
 }
 
@@ -201,14 +212,20 @@ static void cycle()
 
 static void output()
 {
-   
+    // Clear to black
+    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
+    SDL_RenderClear(renderer);
+
+    // Draw white pixels for "on" cells
+    const int w = 8;
+    SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
     for(int j = 0; j < VROWS; j++)
     for(int i = 0; i < VCOLS; i++)
     {
-        SDL_SetRenderDrawColor(renderer, charges[j][i], 0x00, 0x00, 0xFF); 
-        const int w = 8;
-        const SDL_Rect rect = { i * w, j * w, w, w}; // the +1, +1, -2, -2 caused the trim pixel effect
-        SDL_RenderFillRect(renderer, &rect);
+        if (charges[j][i]) {
+            const SDL_Rect rect = { i * w, j * w, w, w };
+            SDL_RenderFillRect(renderer, &rect);
+        }
     }
     SDL_RenderPresent(renderer);
 }
@@ -220,16 +237,10 @@ static int charging(const int j, const int i)
 
 static void charge()
 {
+    // Rebuild the entire charge buffer from vmem (persistent until next draw/clear)
     for(int j = 0; j < VROWS; j++)
     for(int i = 0; i < VCOLS; i++)
-        if(charging(j, i))
-            charges[j][i] = 0xFF;
-}
-
-static void discharge()
-{
-    // Single-frame persistence: clear the entire charge buffer once per frame
-    memset(charges, 0x00, sizeof(charges));
+        charges[j][i] = charging(j, i) ? 0xFF : 0x00;
 }
 
 void dump()
@@ -242,12 +253,19 @@ int main(int argc, char* argv[])
 {
     if(argc != 2)
     {
-        fprintf(stderr, "error: too few or too many argmuents\n");
-        exit(1);
+        fprintf(stderr, "error: too few or too many arguments\n");
+        return 1;
     }
 
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
-    SDL_CreateWindowAndRenderer(512, 256, 0, &window, &renderer);
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) {
+        fprintf(stderr, "SDL_Init error: %s\n", SDL_GetError());
+        return 1;
+    }
+    if (SDL_CreateWindowAndRenderer(512, 256, 0, &window, &renderer) != 0) {
+        fprintf(stderr, "SDL_CreateWindowAndRenderer error: %s\n", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
     SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xff);
     SDL_SetWindowTitle(window, "Emu-1.0");
     SDL_RenderClear(renderer);
@@ -255,15 +273,28 @@ int main(int argc, char* argv[])
 
     key = SDL_GetKeyboardState(NULL);
     load(argv[1]);
-    srand(time(0));
+    srand((unsigned)time(0));
 
     perf_freq    = SDL_GetPerformanceFrequency();
     last_counter = SDL_GetPerformanceCounter();
     cycles_accum = timer_accum = frame_accum = 0.0;
 
-    while(!key[SDL_SCANCODE_END] && !key[SDL_SCANCODE_ESCAPE])
+    int running = 1;
+    SDL_Event e;
+
+    while (running)
     {
-        SDL_PumpEvents();
+        // Handle events (close window or press Esc/End to quit)
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                running = 0;
+            } else if (e.type == SDL_KEYDOWN) {
+                if (e.key.keysym.scancode == SDL_SCANCODE_ESCAPE ||
+                    e.key.keysym.scancode == SDL_SCANCODE_END) {
+                    running = 0;
+                }
+            }
+        }
 
         // If an FX0A is pending, latch the next key without blocking.
         if (waiting_for_key) {
@@ -305,14 +336,15 @@ int main(int argc, char* argv[])
             timer_accum -= 1.0;
         }
 
-        // Refresh at REFRESH_HZ, with lazy charge on draw/clear
+        // Refresh at REFRESH_HZ
         while (frame_accum >= 1.0) {
             if (draw_flag) {
+                // Rebuild the entire charge buffer from vmem
                 charge();
                 draw_flag = 0;
             }
             output();
-            discharge();
+            // Do NOT discharge: leave pixels until next draw/clear
             frame_accum -= 1.0;
         }
 
@@ -324,3 +356,42 @@ int main(int argc, char* argv[])
     SDL_Quit();
     return 0;
 }
+
+/* gpt-5-high, Prompt: can you fix this code so that it exits gracefully, and the text stays on screen after being printed?
+Yep! Two things to address:
+
+    Exit gracefully: handle SDL_QUIT and keydown events (Esc/End) instead of relying only on the keyboard state.
+    Keep text on screen: don’t wipe your “charges” buffer every frame. Recompute it from vmem whenever something draws (or clears), and then render from it each frame.
+
+Below are minimal, drop-in changes.
+
+What to change
+
+    Add string.h (you use memset).
+    Make charge() rebuild the whole charge buffer from vmem.
+    Don’t call discharge() every frame.
+    Handle SDL_QUIT and ESC/END in an event loop.
+    Optional: clear the renderer each frame and only draw “on” pixels for a clean look.
+
+Code changes
+
+    Includes
+    Add string.h at the top:
+
+Replace charge() to mirror vmem exactly
+
+Optional: make output() draw a classic CHIP-8 screen (white pixels on black)
+This makes off pixels truly black and on pixels white.
+
+Notes
+
+    This preserves your intended “lazy redraw” behavior: we only rebuild the charge buffer when something actually changes (draw or clear), so the text stays visible.
+    We removed the per-frame discharge so content doesn’t vanish after one frame.
+    If you still want “fade-out” effects later, you can implement a decay instead of a full memset, e.g. charges[j][i] = (charges[j][i] > 0) ? charges[j][i]-1 : 0, but for persistence you typically rebuild from vmem like above.
+    You can delete discharge() entirely, or leave it unused.
+
+This should give you a clean, graceful exit and persistent on-screen text.
+
+
+*/
+    
