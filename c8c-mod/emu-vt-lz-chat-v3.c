@@ -206,7 +206,7 @@ static void output()
     {
         SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
         const int w = 8;
-        const SDL_Rect rect = { i * w + 1, j * w + 1, w - 2, w - 2 };
+        const SDL_Rect rect = { i * w, j * w, w, w};
         SDL_RenderFillRect(renderer, &rect);
     }
     SDL_RenderPresent(renderer);
