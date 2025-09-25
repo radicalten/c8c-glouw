@@ -422,3 +422,5 @@ If you want, I can also fold SKP/SKNP to use an internal 16-element keypad state
 
 Here’s the fixed, single-file C program with correct CHIP-8 input handling (SKP/SKNP check the specific key in Vx; FX0A waits for any key; SDL keyboard state is fetched fresh each time):
 */
+
+// my note--unfortunately input is still just as broken as chat-v5 on the a5-d.ch8 counter test (the numbers flash and keyboard input is not accepted)
