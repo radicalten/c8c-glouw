@@ -201,7 +201,7 @@ static void cycle()
 
 static void output()
 {
-    SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF); //sets color outside of the loop to be more efficient 
+    SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0x00); //sets color outside of the loop to be more efficient 
     for(int j = 0; j < VROWS; j++)
     for(int i = 0; i < VCOLS; i++)
     {
