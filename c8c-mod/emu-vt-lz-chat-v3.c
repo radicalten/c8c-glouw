@@ -249,7 +249,7 @@ int main(int argc, char* argv[])
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
     SDL_CreateWindowAndRenderer(512, 256, 0, &window, &renderer);
-    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
+    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xff);
     SDL_SetWindowTitle(window, "Emu-1.0");
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
