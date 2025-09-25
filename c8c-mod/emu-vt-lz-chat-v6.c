@@ -356,3 +356,7 @@ int main(int argc, char* argv[])
     SDL_Quit();
     return 0;
 }
+
+/* Prompt: gpt-5-high Can you fix this file so that it reads keyboard inputs properly? currently when keys are pressed nothing happens:
+
+*/
