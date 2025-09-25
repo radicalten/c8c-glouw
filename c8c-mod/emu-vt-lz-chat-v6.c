@@ -358,5 +358,33 @@ int main(int argc, char* argv[])
 }
 
 /* Prompt: gpt-5-high Can you fix this file so that it reads keyboard inputs properly? currently when keys are pressed nothing happens:
+You're reading “some random pressed key” and comparing it to Vx for SKP/SKNP, instead of checking whether “the specific key referenced by Vx” is down. That makes most CHIP‑8 games ignore your input. Also, you cached the keyboard state pointer once; it’s safer to fetch it each time you query keys.
 
+Below is a minimal patch that:
+
+    Uses the correct semantics for EX9E (SKP Vx) and EXA1 (SKNP Vx).
+    Queries SDL’s keyboard state when needed (no stale pointer).
+    Keeps your FX0A wait logic, but uses the same consistent key mapping.
+
+Apply this diff (or mirror the same changes manually).
+
+Diff (unified)
+
+Why this fixes it
+
+    SKP/SKNP now correctly check “is key Vx down?” instead of “does any pressed key equal Vx right now?”, which is what CHIP‑8 programs expect when polling input.
+    Keyboard state is fetched from SDL each time we query, after SDL_PumpEvents, so we don’t rely on a cached pointer or stale state.
+    FX0A still waits for any key and stores the correct CHIP‑8 keycode (0x0..0xF).
+
+Tip
+
+    Make sure the emulator window has focus while testing.
+    The mapping is the classic CHIP‑8 layout:
+    1 2 3 4
+    Q W E R
+    A S D F
+    Z X C V
+    where X = 0, 1..F → 1,2,3,4,Q,W,E,R,A,S,D,F,Z,X,C,V respectively.
+
+If you want, I can also fold SKP/SKNP to use an internal 16-element keypad state updated from SDL_KEYDOWN/KEYUP events, but the above is the smallest change to get your inputs working as expected.
 */
