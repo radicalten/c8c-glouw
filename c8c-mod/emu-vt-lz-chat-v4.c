@@ -222,7 +222,7 @@ static void charge()
 {
     for(int j = 0; j < VROWS; j++)
     for(int i = 0; i < VCOLS; i++)
-        if(charging(j, i))
+        if(!charging(j, i))
             charges[j][i] = 0xFF;
 }
 
