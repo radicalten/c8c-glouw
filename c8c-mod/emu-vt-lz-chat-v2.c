@@ -325,3 +325,203 @@ int main(int argc, char* argv[])
     SDL_Quit();
     return 0;
 }
+
+/* gpt-5-high Prompt1: please implement virtual time and lazy flag evaluation to this code: Prompt2: can you put this all together in one C file?
+Here’s a minimal, drop-in set of changes that adds:
+- Virtual time: delay/sound timers tick at 60 Hz, CPU runs at a set Hz, both based on real time.
+- Lazy draw flag: only redraw when a draw/clear actually happened (common CHIP‑8 pattern). Also makes FX0A non-blocking so timers keep running while waiting for a key.
+
+What changes:
+- cycle() no longer decrements dt/st; timers are updated in the main loop at 60 Hz.
+- A draw_flag is set by 00E0 and DXYN and the screen updates at a fixed refresh rate only when needed.
+- FX0A becomes non-blocking; the main loop finalizes the key wait.
+
+You can copy-paste these snippets into your file.
+
+1) Add these includes, constants, and globals near the top
+```c
+#include <stdbool.h> // add this
+
+// Virtual-time configuration (tweak CPU_HZ to taste)
+#define CPU_HZ     700.0
+#define TIMER_HZ     60.0
+#define REFRESH_HZ   60.0
+
+// Lazy draw flag + FX0A wait state
+static int draw_flag = 1;
+static int waiting_for_key = 0;
+static uint8_t wait_reg = 0xFF;
+
+// Virtual-time accumulators
+static uint64_t perf_freq = 0;
+static uint64_t last_counter = 0;
+static double cycles_accum = 0.0;
+static double timer_accum  = 0.0;
+static double frame_accum  = 0.0;
+```
+
+2) Touch draw/clear ops to set the draw flag
+Replace your existing functions with these bodies (add just the indicated lines):
+
+```c
+static void _00E0() {
+    for(int j = 0; j < VROWS; j++) while(vmem[j] >>= 1);
+    draw_flag = 1; // mark screen dirty
+}
+
+static void _DXYN() {
+    uint16_t x = (op & 0x0F00) >> 8;
+    uint16_t y = (op & 0x00F0) >> 4;
+    uint16_t n = (op & 0x000F) >> 0;
+    uint8_t flag = 0;
+    for(int j = 0; j < n; j++)
+    {
+        uint64_t line = (uint64_t) mem[I + j] << (VCOLS - 8);
+        line >>= v[x];
+        if((vmem[v[y] + j] ^ line) != (vmem[v[y] + j] | line))
+            flag = 1;
+        vmem[v[y] + j] ^= line;
+    }
+    v[0xF] = flag;
+    draw_flag = 1; // mark screen dirty
+}
+```
+
+3) Make FX0A non-blocking (lazy wait for key)
+Replace your FX0A with this:
+
+```c
+static void _FX0A() {
+    uint16_t x = (op & 0x0F00) >> 8;
+    // Enter a non-blocking "wait for key" state.
+    waiting_for_key = 1;
+    wait_reg = (uint8_t)x;
+}
+```
+
+4) Stop decrementing timers in cycle() (timers tick in main loop)
+Replace your cycle() with this:
+
+```c
+static void cycle()
+{
+    // Halt instruction execution if waiting for FX0A; timers continue in main loop.
+    if (waiting_for_key) return;
+
+    op = (mem[pc] << 8) + (mem[pc + 1] & 0x00FF);
+    pc += 0x0002;
+    (*exec[op >> 12])();
+}
+```
+
+5) Replace main() with a virtual-time loop
+This loop runs the CPU at CPU_HZ, timers at 60 Hz, and redraws lazily at REFRESH_HZ.
+
+```c
+int main(int argc, char* argv[])
+{
+    if(argc != 2)
+    {
+        fprintf(stderr, "error: too few or too many argmuents\n");
+        exit(1);
+    }
+
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+    SDL_CreateWindowAndRenderer(512, 256, 0, &window, &renderer);
+    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
+    SDL_SetWindowTitle(window, "Emu-1.0");
+    SDL_RenderClear(renderer);
+    SDL_RenderPresent(renderer);
+
+    key = SDL_GetKeyboardState(NULL);
+    load(argv[1]);
+    srand(time(0));
+
+    perf_freq   = SDL_GetPerformanceFrequency();
+    last_counter = SDL_GetPerformanceCounter();
+    cycles_accum = timer_accum = frame_accum = 0.0;
+
+    while(!key[SDL_SCANCODE_END] && !key[SDL_SCANCODE_ESCAPE])
+    {
+        // Update key state once per loop.
+        SDL_PumpEvents();
+
+        // If an FX0A is pending, latch the key without blocking.
+        if (waiting_for_key) {
+            int k = input(0);
+            if (k != -1) {
+                v[wait_reg] = (uint8_t)k;
+                waiting_for_key = 0;
+            }
+        }
+
+        // Virtual time step
+        uint64_t now = SDL_GetPerformanceCounter();
+        double dt_s = (double)(now - last_counter) / (double)perf_freq; // seconds
+        last_counter = now;
+
+        cycles_accum += dt_s * CPU_HZ;
+        timer_accum  += dt_s * TIMER_HZ;
+        frame_accum  += dt_s * REFRESH_HZ;
+
+        // Run as many CPU cycles as needed to catch up
+        int cycles_to_run = (int)cycles_accum;
+        if (cycles_to_run > 0) {
+            cycles_accum -= cycles_to_run;
+            for (int i = 0; i < cycles_to_run; ++i) {
+                cycle();
+            }
+        }
+
+        // Tick timers at 60 Hz (independent of CPU speed)
+        while (timer_accum >= 1.0) {
+            if (dt > 0) dt--;
+            if (st > 0) st--;
+            // if(st) { beep }
+            timer_accum -= 1.0;
+        }
+
+        // Lazy screen update at fixed refresh rate
+        while (frame_accum >= 1.0) {
+            if (draw_flag) {
+                // If you want the trailing/ghosting effect to decay over time
+                // even when no new draws happen, move discharge() + output()
+                // outside of the draw_flag conditional.
+                charge();
+                output();
+                discharge();
+                draw_flag = 0;
+            }
+            frame_accum -= 1.0;
+        }
+
+        // Be nice to the OS
+        SDL_Delay(1);
+    }
+
+    SDL_Quit();
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+}
+```
+
+Notes and options
+- CPU_HZ: 500–1000 is typical; tweak to suit the feel of each ROM.
+- If you want the “charges” trailing effect to animate continuously (fade over time even with no draws), do this instead at frame tick:
+  - Always call discharge() and output().
+  - Only call charge() when draw_flag is set.
+  That preserves “lazy draw” while keeping the decay animation smooth:
+  - Replace the frame tick block with:
+    - if (draw_flag) { charge(); draw_flag = 0; }
+    - output(); discharge();
+
+That’s it—timers are now time-based (virtual time), and rendering is lazy (via draw_flag), and FX0A won’t stall timers.
+
+Absolutely — here’s the full, single C file with virtual time (CPU/timers/refresh), lazy redraw via draw_flag, and non-blocking FX0A integrated. It preserves your visual “charge/discharge” effect by updating the fade every frame, while only recharging pixels when a draw/clear happens.
+Build tip:
+
+    Compile with: gcc -O2 -std=c11 -Wall -Wextra -o emu main.c sdl2-config --cflags --libs
+    Adjust CPU_HZ to taste (500–1000 typical). The timers and refresh are locked at 60 Hz.
+
+
+    */
