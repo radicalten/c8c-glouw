@@ -33,8 +33,6 @@ static uint8_t v[VSIZE];
 static uint8_t mem[BYTES];
 static uint8_t charges[VROWS][VCOLS];
 
-static const uint8_t* key;
-
 static SDL_Window* window;
 static SDL_Renderer* renderer;
 
@@ -50,29 +48,63 @@ static double cycles_accum = 0.0;
 static double timer_accum  = 0.0;
 static double frame_accum  = 0.0;
 
+// Map CHIP-8 keypad code (0x0..0xF) to SDL scancode
+static int scancode_for_chip8(uint8_t code) {
+    switch (code) {
+        case 0x1: return SDL_SCANCODE_1;
+        case 0x2: return SDL_SCANCODE_2;
+        case 0x3: return SDL_SCANCODE_3;
+        case 0xC: return SDL_SCANCODE_4;
+        case 0x4: return SDL_SCANCODE_Q;
+        case 0x5: return SDL_SCANCODE_W;
+        case 0x6: return SDL_SCANCODE_E;
+        case 0xD: return SDL_SCANCODE_R;
+        case 0x7: return SDL_SCANCODE_A;
+        case 0x8: return SDL_SCANCODE_S;
+        case 0x9: return SDL_SCANCODE_D;
+        case 0xE: return SDL_SCANCODE_F;
+        case 0xA: return SDL_SCANCODE_Z;
+        case 0x0: return SDL_SCANCODE_X;
+        case 0xB: return SDL_SCANCODE_C;
+        case 0xF: return SDL_SCANCODE_V;
+        default:  return -1;
+    }
+}
+
+// Check if a specific CHIP-8 key is currently down
+static int chip8_key_down(uint8_t code) {
+    SDL_PumpEvents();
+    const Uint8* st = SDL_GetKeyboardState(NULL);
+    int sc = scancode_for_chip8(code);
+    return (sc >= 0) ? (st[sc] != 0) : 0;
+}
+
+// Return any currently pressed CHIP-8 key (0x0..0xF) or -1 if none
+static int any_chip8_key_pressed(void) {
+    SDL_PumpEvents();
+    const Uint8* st = SDL_GetKeyboardState(NULL);
+    struct { uint8_t code; SDL_Scancode sc; } map[] = {
+        {0x1, SDL_SCANCODE_1}, {0x2, SDL_SCANCODE_2}, {0x3, SDL_SCANCODE_3}, {0xC, SDL_SCANCODE_4},
+        {0x4, SDL_SCANCODE_Q}, {0x5, SDL_SCANCODE_W}, {0x6, SDL_SCANCODE_E}, {0xD, SDL_SCANCODE_R},
+        {0x7, SDL_SCANCODE_A}, {0x8, SDL_SCANCODE_S}, {0x9, SDL_SCANCODE_D}, {0xE, SDL_SCANCODE_F},
+        {0xA, SDL_SCANCODE_Z}, {0x0, SDL_SCANCODE_X}, {0xB, SDL_SCANCODE_C}, {0xF, SDL_SCANCODE_V},
+    };
+    for (size_t i = 0; i < sizeof(map)/sizeof(map[0]); ++i) {
+        if (st[map[i].sc]) return map[i].code;
+    }
+    return -1;
+}
+
+// Backward-compatible helper (used in main’s wait loop)
 static int input(const int waiting)
 {
-    do
-    {
-        SDL_PumpEvents();
-        if(key[SDL_SCANCODE_1]) return 0x01;
-        if(key[SDL_SCANCODE_2]) return 0x02;
-        if(key[SDL_SCANCODE_3]) return 0x03;
-        if(key[SDL_SCANCODE_4]) return 0x0C;
-        if(key[SDL_SCANCODE_Q]) return 0x04;
-        if(key[SDL_SCANCODE_W]) return 0x05;
-        if(key[SDL_SCANCODE_E]) return 0x06;
-        if(key[SDL_SCANCODE_R]) return 0x0D;
-        if(key[SDL_SCANCODE_A]) return 0x07;
-        if(key[SDL_SCANCODE_S]) return 0x08;
-        if(key[SDL_SCANCODE_D]) return 0x09;
-        if(key[SDL_SCANCODE_F]) return 0x0E;
-        if(key[SDL_SCANCODE_Z]) return 0x0A;
-        if(key[SDL_SCANCODE_X]) return 0x00;
-        if(key[SDL_SCANCODE_C]) return 0x0B;
-        if(key[SDL_SCANCODE_V]) return 0x0F;
-    }
-    while(waiting);
+    int k;
+    do {
+        k = any_chip8_key_pressed();
+        if (k != -1) return k;
+        if (!waiting) break;
+        SDL_Delay(1);
+    } while (waiting);
     return -1;
 }
 
@@ -116,8 +148,8 @@ static void _DXYN() {
     v[0xF] = flag;
     draw_flag = 1; // mark screen dirty
 }
-static void _EXA1() { uint16_t x = (op & 0x0F00) >> 8; if(v[x] != input(0)) pc += 0x0002; }
-static void _EX9E() { uint16_t x = (op & 0x0F00) >> 8; if(v[x] == input(0)) pc += 0x0002; }
+static void _EXA1() { uint16_t x = (op & 0x0F00) >> 8; if(!chip8_key_down(v[x])) pc += 0x0002; } // SKNP Vx
+static void _EX9E() { uint16_t x = (op & 0x0F00) >> 8; if( chip8_key_down(v[x])) pc += 0x0002; } // SKP Vx
 static void _FX07() { uint16_t x = (op & 0x0F00) >> 8; v[x] = dt; }
 static void _FX0A() { uint16_t x = (op & 0x0F00) >> 8; waiting_for_key = 1; wait_reg = (uint8_t)x; }
 static void _FX15() { uint16_t x = (op & 0x0F00) >> 8; dt = v[x]; }
@@ -271,7 +303,6 @@ int main(int argc, char* argv[])
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
 
-    key = SDL_GetKeyboardState(NULL);
     load(argv[1]);
     srand((unsigned)time(0));
 
@@ -358,6 +389,7 @@ int main(int argc, char* argv[])
 }
 
 /* Prompt: gpt-5-high Can you fix this file so that it reads keyboard inputs properly? currently when keys are pressed nothing happens:
+Prompt2: can you put this in one C file?
 You're reading “some random pressed key” and comparing it to Vx for SKP/SKNP, instead of checking whether “the specific key referenced by Vx” is down. That makes most CHIP‑8 games ignore your input. Also, you cached the keyboard state pointer once; it’s safer to fetch it each time you query keys.
 
 Below is a minimal patch that:
@@ -387,4 +419,6 @@ Tip
     where X = 0, 1..F → 1,2,3,4,Q,W,E,R,A,S,D,F,Z,X,C,V respectively.
 
 If you want, I can also fold SKP/SKNP to use an internal 16-element keypad state updated from SDL_KEYDOWN/KEYUP events, but the above is the smallest change to get your inputs working as expected.
+
+Here’s the fixed, single-file C program with correct CHIP-8 input handling (SKP/SKNP check the specific key in Vx; FX0A waits for any key; SDL keyboard state is fetched fresh each time):
 */
