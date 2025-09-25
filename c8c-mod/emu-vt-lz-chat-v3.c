@@ -201,10 +201,11 @@ static void cycle()
 
 static void output()
 {
-    SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0x00); //sets color outside of the loop to be more efficient 
+   
     for(int j = 0; j < VROWS; j++)
     for(int i = 0; i < VCOLS; i++)
     {
+        SDL_SetRenderDrawColor(renderer, charges[j][i], 0xFF, 0xFF, 0x00); 
         const int w = 8;
         const SDL_Rect rect = { i * w, j * w, w, w}; // the +1, +1, -2, -2 caused the trim pixel effect
         SDL_RenderFillRect(renderer, &rect);
